@@ -1,6 +1,8 @@
 <h1 align="center">Super light integrated and power engine</h1>
 
-<p align="center><ing src"./readme_assets/"SearchEngine.png width="100%"></p>
+<p align="center">
+  <img src="./readme_assets/SearchEngine.png" width="100%">
+</p>
 
 # Console Search Engine
 
