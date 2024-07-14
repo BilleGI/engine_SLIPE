@@ -9,8 +9,7 @@ int main()
 {
     engine::InvertedIndex index(engine::ConverterJSON::GetTextDocument());
     engine::SearchServer server(index);
-    std::vector<std::vector<engine::RelativeIndex>> ser(server.search(engine::ConverterJSON::GetRequests()));
-    engine::ConverterJSON::putAnswers(ser);
+    engine::ConverterJSON::putAnswers(server.search(engine::ConverterJSON::GetRequests()));
 }
 
 

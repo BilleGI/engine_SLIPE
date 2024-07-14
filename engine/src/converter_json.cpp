@@ -191,11 +191,11 @@ void ready_answers(nlohmann::json& data_answers, const std::vector<std::vector<e
             }
             else
             {
-                for(int j = 0; j < answers[i].size(); ++j)
+                for(auto& j : answers[i])
                 {
                     data_answers["answers"][request]["relevance"].push_back({
-                        {"docid", answers[i][j].doc_id},
-                        {"rank", answers[i][j].rank}
+                        {"docid", j.doc_id},
+                        {"rank", j.rank}
                     });
                 }
             }

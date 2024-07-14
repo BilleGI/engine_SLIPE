@@ -9,17 +9,12 @@ bool engine::RelativeIndex::operator==(const engine::RelativeIndex &other) const
 
 engine::SearchServer::SearchServer(const engine::InvertedIndex& idx) : _index(idx){}
 
-void engine::SearchServer::UpdateSearchServer(const engine::InvertedIndex& idx)
-{
-    _index = idx;
-}
-
 inline void my_swap(std::vector<std::vector<std::string>>& uniq_words_list,
                     std::vector<std::list<std::string>>& words_list)
 {
     for(auto& it: words_list)
     {
-        uniq_words_list.push_back(std::vector<std::string>());
+        uniq_words_list.emplace_back(std::vector<std::string>());
         while(!it.empty())
         {
             uniq_words_list[uniq_words_list.size() - 1].push_back(it.front());

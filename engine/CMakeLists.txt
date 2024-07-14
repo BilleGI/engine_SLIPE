@@ -15,10 +15,10 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/nlohmann_json/include
 )
 
-#file(GLOB all_SRCS
-#    "${PROJECT_SOURCE_DIR}/include/*.h"
-#    "${PROJECT_SOURCE_DIR}/src/*.cpp"
-#)
+file(GLOB all_SRCS
+    "${PROJECT_SOURCE_DIR}/include/*.h"
+    "${PROJECT_SOURCE_DIR}/src/*.cpp"
+)
 
 set(MY_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 
