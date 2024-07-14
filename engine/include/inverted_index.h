@@ -19,12 +19,11 @@ namespace engine
     {
     public:
         InvertedIndex() = default;
-        InvertedIndex(const std::vector<std::string>& docs);
+        explicit InvertedIndex(const std::vector<std::string>& docs);
         InvertedIndex& operator=(const InvertedIndex&);
         void UpdateDocumentBase(const std::vector<std::string>& input_docs);
         std::vector<Entry>& GetWordCount(const std::string& word);
     private:
-        //    std::vector<std::string> docs;
         std::map<std::string, std::vector<Entry>> freq_dictionary;
     };
 }
