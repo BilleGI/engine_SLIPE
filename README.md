@@ -17,6 +17,8 @@
 <img src="https://img.shields.io/github/issues/silent-lad/Vue2BaremetricsCalendar.svg">
 
 <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat">
+
+<img src="https://img.shields.io/endpoint?url=%7B%20%22schemaVersion%22%3A%201%2C%20%22label%22%3A%20%22hello%22%2C%20%22message%22%3A%20%22sweet%20world%22%2C%20%22color%22%3A%20%22orange%22%20%7D">
 </p>
 
 <p align="center">
