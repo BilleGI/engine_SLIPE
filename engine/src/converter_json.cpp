@@ -133,15 +133,6 @@ std::vector<std::string> engine::ConverterJSON::GetTextDocument()
     return TextDocument;
 }
 
-int engine::ConverterJSON::GetResponsesLimit()
-{
-    nlohmann::json data_config;
-    check_data(data_config);
-    if(data_config["config"].find("max_responses") == data_config.end())
-        return 5;
-    return data_config["config"]["max_responses"];
-}
-
 std::vector<std::string> engine::ConverterJSON::GetRequests()
 {
     nlohmann::json data_requests;

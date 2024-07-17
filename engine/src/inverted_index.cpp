@@ -4,8 +4,7 @@
 #include <mutex>
 #include <functional>
 #include <exception>
-
-std::mutex thread_lock;
+#include "threadPool.h"
 
 bool engine::Entry::operator==(const Entry& other) const
 {
@@ -43,7 +42,6 @@ void sort(const int number_doc, const std::string& text_document ,std::map<std::
             word += text_document[i];
         else if (!word.empty())
         {
-            thread_lock.lock();
             if(freq_dictionary.find(word) == freq_dictionary.end())
                 freq_dictionary[word].push_back(engine::Entry(number_doc,1));
             else
@@ -54,7 +52,6 @@ void sort(const int number_doc, const std::string& text_document ,std::map<std::
                     comparison(freq_dictionary[word]);
                 }
             }
-            thread_lock.unlock();
             word.clear();
         }
     }
@@ -62,12 +59,19 @@ void sort(const int number_doc, const std::string& text_document ,std::map<std::
 
 void init_thread(const std::vector<std::string>& docs, std::map<std::string, std::vector<engine::Entry>>& freq_dictionary)
 {
-    std::vector<std::thread> thread_sort;
-    for(int i = 0; i < docs.size(); ++i)
-        thread_sort.emplace_back(sort, i, std::ref(docs[i]), std::ref(freq_dictionary));
+    try{
+        ThreadPool indexFiles;
+        std::vector<std::future<void>> futures;
+        for(size_t i{}; i < docs.size(); ++i)
+            futures.emplace_back(indexFiles.commit(sort, i, std::ref(docs[i]), std::ref(freq_dictionary)));
 
-    for(auto& my_join: thread_sort)
-        my_join.join();
+        for(auto& future : futures)
+            future.get();
+    }
+    catch(std::exception& e)
+    {
+        std::cout << "Error: " << e.what() << std::endl;
+    }
 
 }
 
@@ -92,7 +96,6 @@ void engine::InvertedIndex::UpdateDocumentBase(const std::vector<std::string>& i
 {
     freq_dictionary.clear();
     init_thread(input_docs, freq_dictionary);
-//    docs = input_docs;
 }
 
 std::vector<engine::Entry>& engine::InvertedIndex::GetWordCount(const std::string& word)

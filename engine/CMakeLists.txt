@@ -12,6 +12,7 @@ add_subdirectory(nlohmann_json)
 include_directories(
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/thread_pool
     ${PROJECT_SOURCE_DIR}/nlohmann_json/include
 )
 
@@ -33,6 +34,9 @@ add_library(engine_library
     ${PROJECT_SOURCE_DIR}/src/search_server.cpp
 )
 
+add_library(thread_pool INTERFACE)
+target_include_directories(thread_pool INTERFACE ${PROJECT_SOURCE_DIR}/thread_pool)
+
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     option(TESTS "build test (or no)" ON)
 
@@ -45,6 +49,7 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
         add_subdirectory(test)
     endif()
 endif()
+
 
 #add_executable(search_engine ${all_SRCS})
 add_subdirectory(src)
