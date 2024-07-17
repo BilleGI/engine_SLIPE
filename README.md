@@ -18,7 +18,7 @@
 
 <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat">
 
-<img src="https://badgen.net/#static/leanguage/C++/cyan">
+<img src="https://img.shields.io/badge/language-%D0%A1%2B%2B-blue">
 </p>
 
 <p align="center">
