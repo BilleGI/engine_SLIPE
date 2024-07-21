@@ -133,6 +133,15 @@ std::vector<std::string> engine::ConverterJSON::GetTextDocument()
     return TextDocument;
 }
 
+int engine::ConverterJSON::GetResponsesLimit()
+{
+    nlohmann::json data_config;
+    check_data(data_config);
+    if(data_config["config"].find("max_responses") == data_config.end())
+        return 5;
+    return data_config["config"]["max_responses"];
+}
+
 std::vector<std::string> engine::ConverterJSON::GetRequests()
 {
     nlohmann::json data_requests;
@@ -182,11 +191,11 @@ void ready_answers(nlohmann::json& data_answers, const std::vector<std::vector<e
             }
             else
             {
-                for(auto& j : answers[i])
+                for(int j = 0; j < answers[i].size(); ++j)
                 {
                     data_answers["answers"][request]["relevance"].push_back({
-                        {"docid", j.doc_id},
-                        {"rank", j.rank}
+                        {"docid", answers[i][j].doc_id},
+                        {"rank", answers[i][j].rank}
                     });
                 }
             }

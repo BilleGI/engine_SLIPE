@@ -1,14 +1,23 @@
 #include "inverted_index.h"
+#include "threadPool.h"
 #include <thread>
 #include <iostream>
 #include <mutex>
 #include <functional>
-#include <exception>
-#include "threadPool.h"
+#include <stdexcept>
+#include <sstream>
+#include <algorithm>
+
+std::mutex thread_lock;
 
 bool engine::Entry::operator==(const Entry& other) const
 {
     return ((other.count == this->count) && (other.doc_id == this->doc_id));
+}
+
+bool engine::Entry::operator<(const Entry& other) const
+{
+    return this->doc_id < other.doc_id;
 }
 
 bool check_dictionary(const int& number_doc, std::vector<engine::Entry>& list_dictionary)
@@ -24,55 +33,47 @@ bool check_dictionary(const int& number_doc, std::vector<engine::Entry>& list_di
     return false;
 }
 
-void comparison(std::vector<engine::Entry>& list_dictionary)
+void emplaceEntry(const int number_doc, const std::string& text_document ,std::map<std::string, std::vector<engine::Entry>>& freq_dictionary)
 {
-    if(list_dictionary[list_dictionary.size() - 1].doc_id < list_dictionary[list_dictionary.size() - 2].doc_id)
+    std::stringstream docStream{std::move(text_document)};
+    std::string word;
+    while(docStream >> word)
     {
-        std::swap(list_dictionary[list_dictionary.size()-1],
-                             list_dictionary[list_dictionary.size()-2]);
+        thread_lock.lock();
+        if(freq_dictionary.find(word) == freq_dictionary.end() ||
+            !(check_dictionary(number_doc, freq_dictionary[word])))
+            freq_dictionary[word].emplace_back(engine::Entry{(size_t)number_doc, 1});
+        thread_lock.unlock();
     }
 }
 
-void sort(const int number_doc, const std::string& text_document ,std::map<std::string, std::vector<engine::Entry>>& freq_dictionary)
+void idSorted(std::vector<engine::Entry>& wordFreq)
 {
-    std::string word;
-    for(int i = 0; i <= text_document.size(); ++i)
-    {
-        if(text_document[i] != ' ' && text_document[i] !='\0')
-            word += text_document[i];
-        else if (!word.empty())
-        {
-            if(freq_dictionary.find(word) == freq_dictionary.end())
-                freq_dictionary[word].push_back(engine::Entry(number_doc,1));
-            else
-            {
-                if (!check_dictionary(number_doc, freq_dictionary[word]))
+    std::sort(wordFreq.begin(), wordFreq.end()/*,
+              [](engine::Entry first, engine::Entry second)
                 {
-                    freq_dictionary[word].push_back(engine::Entry(number_doc, 1));
-                    comparison(freq_dictionary[word]);
-                }
-            }
-            word.clear();
-        }
-    }
+                    return first.doc_id < second.doc_id;
+    }*/);
 }
 
 void init_thread(const std::vector<std::string>& docs, std::map<std::string, std::vector<engine::Entry>>& freq_dictionary)
 {
-    try{
-        ThreadPool indexFiles;
-        std::vector<std::future<void>> futures;
-        for(size_t i{}; i < docs.size(); ++i)
-            futures.emplace_back(indexFiles.commit(sort, i, std::ref(docs[i]), std::ref(freq_dictionary)));
+    ThreadPool myPool;
+    std::vector<std::future<void>> tasks;
 
-        for(auto& future : futures)
-            future.get();
-    }
-    catch(std::exception& e)
-    {
-        std::cout << "Error: " << e.what() << std::endl;
-    }
+    for(int i{}; i < docs.size(); ++i)
+        tasks.emplace_back(myPool.commit(emplaceEntry, i, std::ref(docs[i]), std::ref(freq_dictionary)));
 
+    for(auto& task : tasks)
+        task.get();
+
+    tasks.clear();
+
+    for(auto& word : freq_dictionary)
+        tasks.emplace_back(myPool.commit(idSorted, std::ref(word.second)));
+
+    for(auto& task : tasks)
+        task.get();
 }
 
 engine::InvertedIndex::InvertedIndex(const std::vector<std::string>& input_docs) /*: docs(input_docs)*/
@@ -87,7 +88,7 @@ engine::InvertedIndex& engine::InvertedIndex::operator=(const engine::InvertedIn
     for(auto& it: other.freq_dictionary)
     {
         for(auto& it2: it.second)
-            this->freq_dictionary[it.first].push_back(it2);
+            this->freq_dictionary[it.first].emplace_back(it2);
     }
     return *this;
 }
@@ -100,7 +101,7 @@ void engine::InvertedIndex::UpdateDocumentBase(const std::vector<std::string>& i
 
 std::vector<engine::Entry>& engine::InvertedIndex::GetWordCount(const std::string& word)
 {
-    if(freq_dictionary.empty()) throw std::exception(); //Initialization error
+    if(freq_dictionary.empty()) throw std::runtime_error("Initialization error");
 
     return freq_dictionary[word];
 }

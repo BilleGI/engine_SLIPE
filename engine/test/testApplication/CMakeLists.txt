@@ -10,12 +10,15 @@ FetchContent_Declare(
     googletest
     URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
 )
+FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
 add_executable(test_application test_app.cpp)
 
 target_link_libraries(test_application PRIVATE GTest::gtest_main engine_library)
+
+add_test(NAME test_application COMMAND test_application)
 
 install(TARGETS test_application
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

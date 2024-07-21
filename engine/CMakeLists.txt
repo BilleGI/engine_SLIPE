@@ -12,14 +12,13 @@ add_subdirectory(nlohmann_json)
 include_directories(
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/thread_pool
     ${PROJECT_SOURCE_DIR}/nlohmann_json/include
 )
 
-file(GLOB all_SRCS
-    "${PROJECT_SOURCE_DIR}/include/*.h"
-    "${PROJECT_SOURCE_DIR}/src/*.cpp"
-)
+#file(GLOB all_SRCS
+#    "${PROJECT_SOURCE_DIR}/include/*.h"
+#    "${PROJECT_SOURCE_DIR}/src/*.cpp"
+#)
 
 set(MY_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 
@@ -28,14 +27,12 @@ add_library(engine_library
     ${PROJECT_SOURCE_DIR}/include/converter_json.h
     ${PROJECT_SOURCE_DIR}/include/my_exception.h
     ${PROJECT_SOURCE_DIR}/include/search_server.h
+    ${PROJECT_SOURCE_DIR}/include/threadPool.h
     ${PROJECT_SOURCE_DIR}/src/inverted_index.cpp
     ${PROJECT_SOURCE_DIR}/src/converter_json.cpp
     ${PROJECT_SOURCE_DIR}/src/my_exception.cpp
     ${PROJECT_SOURCE_DIR}/src/search_server.cpp
 )
-
-add_library(thread_pool INTERFACE)
-target_include_directories(thread_pool INTERFACE ${PROJECT_SOURCE_DIR}/thread_pool)
 
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     option(TESTS "build test (or no)" ON)
@@ -43,13 +40,13 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     if(TESTS)
         add_library(test_index
             ${PROJECT_SOURCE_DIR}/include/inverted_index.h
+            ${PROJECT_SOURCE_DIR}/include/threadPool.h
             ${PROJECT_SOURCE_DIR}/src/inverted_index.cpp
         )
         enable_testing()
         add_subdirectory(test)
     endif()
 endif()
-
 
 #add_executable(search_engine ${all_SRCS})
 add_subdirectory(src)

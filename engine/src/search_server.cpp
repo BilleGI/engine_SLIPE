@@ -1,169 +1,158 @@
 #include <search_server.h>
+#include <sstream>
 #include <list>
-//#include <converter_json.h>
+#include <algorithm>
+
+using AbsoluteIndex = std::map<int,int>;
 
 bool engine::RelativeIndex::operator==(const engine::RelativeIndex &other) const
 {
     return (this->rank == other.rank && this->doc_id == other.doc_id);
 }
 
-engine::SearchServer::SearchServer(const engine::InvertedIndex& idx) : _index(idx){}
+engine::SearchServer::SearchServer(const engine::InvertedIndex& idx) : index{idx}{}
 
-inline void my_swap(std::vector<std::vector<std::string>>& uniq_words_list,
-                    std::vector<std::list<std::string>>& words_list)
+void getIndividualWord(std::vector<std::vector<std::string>>& listUniqWord, const std::vector<std::string>& queries_input)
 {
-    for(auto& it: words_list)
+    for(auto& query : queries_input)
     {
-        uniq_words_list.emplace_back(std::vector<std::string>());
-        while(!it.empty())
-        {
-            uniq_words_list[uniq_words_list.size() - 1].push_back(it.front());
-            it.pop_front();
-        }
-    }
-}
-
-void uniq_words(std::vector<std::vector<std::string>>&uniq_words_list, const std::vector<std::string>& queries_input)
-{
-    std::vector<std::list<std::string>> words_list;
-    for(auto& it: queries_input)
-    {
+        std::stringstream bufferQueries{query};
         std::string word;
-        words_list.push_back(std::list<std::string>());
-        for(auto& ch: it)
+        listUniqWord.emplace_back(std::vector<std::string>());
+        while(bufferQueries >> word)
         {
-            if(words_list[words_list.size()-1].size() == 10) break;
-            if(ch != ' ' && ch !='\0')
-            {
-                word += ch;
-            }
-            else
-            {
-                words_list[words_list.size() - 1].push_back(word);
-                word.clear();
-            }
+            listUniqWord[listUniqWord.size() - 1].emplace_back(word);
+            if(listUniqWord[listUniqWord.size() - 1].size() == 10) break;
         }
-        words_list[words_list.size()-1].unique();
-        if(words_list.size() == 1000) break;
-    }
-    my_swap(uniq_words_list, words_list);
-}
-
-int count_word(std::vector<engine::Entry>& freq_word)
-{
-    if(freq_word.empty()) return 0;
-    else
-    {
-        int count = 0;
-        for(auto& it: freq_word)
-        {
-            count+= it.count;
-        }
-        return count;
+        if(listUniqWord.size() == 1000) break;
     }
 }
-
-void sort_words(std::vector<std::string>& words,  engine::InvertedIndex& _index)
+void getUniqWord(std::vector<std::vector<std::string>>& listUniqWord)
 {
-    for(int i = 0; i < words.size() - 1; ++i)
+    for(auto& uniqWord : listUniqWord)
+        std::unique(uniqWord.begin(), uniqWord.end());
+}
+
+size_t countWord(const std::vector<engine::Entry>& words)
+{
+    if(words.empty()) return 0;
+
+    size_t count{};
+
+    for(auto& word : words)
+        count += word.count;
+
+    return count;
+}
+
+bool getSwap(const std::vector<engine::Entry>& left, const std::vector<engine::Entry>& right)
+{
+    return (countWord(left) > countWord(right));
+}
+
+// function sorted current vector words
+inline void currentSorted(std::vector<std::string>& uniqWords, const std::vector<std::vector<engine::Entry>>& entry)
+{
+    for(size_t i{}; i < (uniqWords.size() - 1); ++i)
+        for(size_t j{}; j < (uniqWords.size() - (1 + i)); ++j)
+            if(getSwap(entry[j], entry[j+1]))
+                std::swap(uniqWords[j], uniqWords[j+1]);
+}
+
+// this function sorted words
+void sortedWords( engine::InvertedIndex& index, std::vector<std::vector<std::string>>& listUniqWord)
+{
+    std::vector<std::vector<std::vector<engine::Entry>>> allCollectionWordsEntry;
+    for(auto& uniqWord : listUniqWord)
     {
-        for(int j = 0; j < (words.size() - (1 + i)); ++j)
-        {
-            if(count_word(_index.GetWordCount(words[j])) > count_word(_index.GetWordCount(words[j+1])))
-            {
-                std::string word = words[j];
-                words[j] = words[j+1];
-                words[j+1] = word;
-            }
-        }
+        allCollectionWordsEntry.emplace_back(std::vector<std::vector<engine::Entry>>());
+        for(auto& currentWord : uniqWord)
+            allCollectionWordsEntry[allCollectionWordsEntry.size() - 1].emplace_back(index.GetWordCount(currentWord));
+    }
+
+    for(size_t i{}; i < listUniqWord.size(); ++i)
+        currentSorted(listUniqWord[i], allCollectionWordsEntry[i]);
+}
+
+void initializerAnswers(AbsoluteIndex& answersOnRequest, const std::vector<engine::Entry>& wordCount)//i
+{
+    for(auto& word : wordCount)
+    {
+        if(answersOnRequest.find(word.doc_id) == answersOnRequest.end())
+            answersOnRequest[word.doc_id] = word.count;
+        else answersOnRequest[word.doc_id] += word.count;
     }
 }
 
-void search_relative(std::vector<engine::RelativeIndex>& relative_words, engine::Entry& freq_word)
+void getAbsoluteAnswer(std::vector<AbsoluteIndex>& absoluteDoc, engine::InvertedIndex& idx, const std::vector<std::vector<std::string>>& listUniqWord)
 {
-    bool search = false;
-    for(auto& it: relative_words)
+    for(auto& listWords : listUniqWord)
     {
-        if(it.doc_id == freq_word.doc_id)
+        absoluteDoc.emplace_back(AbsoluteIndex());
+        for(auto& word : listWords)
         {
-            search = true;
-            it.rank += freq_word.count;
-            break;
-        }
-    }
-    if(!search)
-    {
-        relative_words.push_back(engine::RelativeIndex(freq_word.doc_id, freq_word.count));
-    }
-}
-
-void get_abs_relative(std::vector<engine::RelativeIndex>& relative_words, std::string& word, engine::InvertedIndex& _index)
-{
-    std::vector<engine::Entry> freq_word(_index.GetWordCount(word));
-    if(!freq_word.empty())
-    {
-        if(relative_words.empty())
-        {
-            for(auto& it: freq_word)
-                relative_words.push_back(engine::RelativeIndex(it.doc_id, it.count));
-        }
-        else
-        {
-            for(auto& it: freq_word)
-            {
-                search_relative(relative_words, it);
-            }
+            std::vector<engine::Entry> wordCount{idx.GetWordCount(word)};
+            if(!wordCount.empty()) initializerAnswers(absoluteDoc[absoluteDoc.size()-1], wordCount);
         }
     }
 }
 
-void get_relative(std::vector<engine::RelativeIndex>& relative_doc)
+void getMaxValue(const AbsoluteIndex& collectionAbsolute, int& maxValue)
 {
-    int max_relative = 0;
-    for(auto& it: relative_doc)
-    {
-        if(max_relative < it.rank)
-            max_relative = it.rank;
-    }
-    for(auto& it: relative_doc)
-        it.rank /= max_relative;
+    for(auto& absolute : collectionAbsolute)
+        if(absolute.second > maxValue) maxValue = absolute.second;
 }
 
-void sort_doc(std::vector<engine::RelativeIndex>& relative_doc)
+void pushRelative(std::vector<engine::RelativeIndex>& collectionRelative, const AbsoluteIndex& collectionAbsolute, int& maxValue) // возможна проблема
 {
-    for(int i =0; i < (relative_doc.size()-1); ++i)
+    for(auto& absolute : collectionAbsolute)
+        collectionRelative.emplace_back(absolute.first, ((float)absolute.second / maxValue));
+}
+
+void relativeSorted(std::vector<std::vector<engine::RelativeIndex>>& relativeDoc)
+{
+    for(auto& collectionRelative : relativeDoc)
     {
-        for(int j = 0; j < (relative_doc.size() - (1 + i)); ++j)
-        {
-            if(relative_doc[j].rank < relative_doc[j+1].rank)
-            {
-                engine::RelativeIndex var = relative_doc[j];
-                relative_doc[j] = relative_doc[j+1];
-                relative_doc[j+1] = var;
-            }
-        }
+        if(!collectionRelative.empty())
+            std::ranges::sort(collectionRelative, [](engine::RelativeIndex& left, engine::RelativeIndex& right)
+                              {
+                                if(left.rank == right.rank) return left.doc_id < right.doc_id;
+                                return left.rank > right.rank;
+            });
     }
 }
 
-void relative(std::vector<engine::RelativeIndex>& relative_doc,
-              std::vector<std::string>& uniq_words_list, engine::InvertedIndex& _index)
+void getRelativeAnswer(std::vector<std::vector<engine::RelativeIndex>>& relativeDoc, const std::vector<AbsoluteIndex>& absoluteDoc)
 {
-    sort_words(uniq_words_list, _index); // sorting by the number of words
-    for(auto it: uniq_words_list)
-        get_abs_relative(relative_doc, it, _index);
-    get_relative(relative_doc);
-    sort_doc(relative_doc);
+    for(auto& collectionAbsolute : absoluteDoc)
+    {
+        relativeDoc.emplace_back(std::vector<engine::RelativeIndex>());
+        int maxValue{};
+        getMaxValue(collectionAbsolute, maxValue);
+        pushRelative(relativeDoc[relativeDoc.size()-1], collectionAbsolute, maxValue);
+    }
+    //осталась сортировка документов по id
+    relativeSorted(relativeDoc);
 }
 
 std::vector<std::vector<engine::RelativeIndex>> engine::SearchServer::search(const std::vector<std::string>& queries_input)
 {
-    std::vector<std::vector<std::string>> uniq_words_list;
-    uniq_words(uniq_words_list, queries_input);// List uniq words
-    std::vector<std::vector<engine::RelativeIndex>> relative_docs;
-    for(auto& it: uniq_words_list)
-    {
-        relative_docs.push_back(std::vector<engine::RelativeIndex>());
-        relative(relative_docs[relative_docs.size()-1], it, _index);
-    }
-    return relative_docs;
+    std::vector<std::vector<std::string>> listUniqWord;
+    getIndividualWord(listUniqWord, queries_input);
+    getUniqWord(listUniqWord);
+    sortedWords(index, listUniqWord);
+
+    std::vector<AbsoluteIndex> absoluteDoc;
+
+    getAbsoluteAnswer(absoluteDoc, index, listUniqWord);
+
+    listUniqWord.clear();
+
+    std::vector<std::vector<engine::RelativeIndex>> relativeDoc;
+
+    getRelativeAnswer(relativeDoc, absoluteDoc);
+
+    absoluteDoc.clear();
+
+    return relativeDoc;
 }
